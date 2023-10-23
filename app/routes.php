@@ -12,10 +12,30 @@ use Slim\Interfaces\RouteCollectorProxyInterface as Group;
 return function (App $app) {
 
     // get
-    $app->get('/countries', function (Request $request, Response $response) {
+    $app->get('/barang', function (Request $request, Response $response) {
         $db = $this->get(PDO::class);
 
-        $query = $db->query('SELECT * FROM countries');
+        $query = $db->query('CALL selectBarang()');
+        $results = $query->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($results));
+
+        return $response->withHeader("Content-Type", "application/json");
+    });
+
+    $app->get('/detail', function (Request $request, Response $response) {
+        $db = $this->get(PDO::class);
+
+        $query = $db->query('CALL selectBarang()');
+        $results = $query->fetchAll(PDO::FETCH_ASSOC);
+        $response->getBody()->write(json_encode($results));
+
+        return $response->withHeader("Content-Type", "application/json");
+    });
+
+    $app->get('/transaksi', function (Request $request, Response $response) {
+        $db = $this->get(PDO::class);
+
+        $query = $db->query('CALL selectBarang()');
         $results = $query->fetchAll(PDO::FETCH_ASSOC);
         $response->getBody()->write(json_encode($results));
 
@@ -23,11 +43,12 @@ return function (App $app) {
     });
 
     // get by id
-    $app->get('/countries/{id}', function (Request $request, Response $response, $args) {
+    $app->get('/barang/{kode_barang}', function (Request $request, Response $response, $args) {
         $db = $this->get(PDO::class);
 
-        $query = $db->prepare('SELECT * FROM countries WHERE id=?');
-        $query->execute([$args['id']]);
+        $query = $db->prepare('CALL selectBarangByKode(:kode_barang)');
+        $query->bindParam(':kode_barang', $args['kode_barang'], PDO::PARAM_INT);
+        $query->execute();
         $results = $query->fetchAll(PDO::FETCH_ASSOC);
         $response->getBody()->write(json_encode($results[0]));
 
@@ -35,24 +56,26 @@ return function (App $app) {
     });
 
     // post data
-    $app->post('/countries', function (Request $request, Response $response) {
+    $app->post('/barang', function (Request $request, Response $response) {
         $parsedBody = $request->getParsedBody();
 
-        $id = $parsedBody["id"]; // menambah dengan kolom baru
-        $countryName = $parsedBody["name"];
+        $kode_barang = $parsedBody["kode_barang"]; // menambah dengan kolom baru
+        $nama_barang = $parsedBody["nama_barang"];
+        $harga_barang = $parsedBody["harga_barang"];
+        $stok_barang = $parsedBody["stok_barang"];
 
         $db = $this->get(PDO::class);
 
-        $query = $db->prepare('INSERT INTO countries (id, name) values (?, ?)');
+        $query = $db->prepare('INSERT INTO barang (kode_barang, nama_barang, harga_barang, stok_barang) values (?, ?, ?, ?)');
 
         // urutan harus sesuai dengan values
-        $query->execute([$id, $countryName]);
+        $query->execute([$kode_barang, $nama_barang, $harga_barang, $stok_barang]);
 
         $lastId = $db->lastInsertId();
 
         $response->getBody()->write(json_encode(
             [
-                'message' => 'country disimpan dengan id ' . $lastId
+                'message' => 'barang disimpan dengan id ' . $lastId
             ]
         ));
 
@@ -60,27 +83,28 @@ return function (App $app) {
     });
 
     // put data
-    $app->put('/countries/{id}', function (Request $request, Response $response, $args) {
+    $app->put('/barang/{kode_barang}', function (Request $request, Response $response, $args) {
         $parsedBody = $request->getParsedBody();
-
-        $currentId = $args['id'];
-        $countryName = $parsedBody["name"];
+    
+        $currentId = $args['kode_barang'];
+        $harga_barang = $parsedBody["harga_barang"];
+    
         $db = $this->get(PDO::class);
-
-        $query = $db->prepare('UPDATE countries SET name = ? WHERE id = ?');
-        $query->execute([$countryName, $currentId]);
-
+    
+        $query = $db->prepare('UPDATE barang SET harga_barang = ? WHERE kode_barang = ?'); // Ganti 'id' dengan 'kode_barang'
+        $query->execute([$harga_barang, $currentId]);
+    
         $response->getBody()->write(json_encode(
             [
-                'message' => 'country dengan id ' . $currentId . ' telah diupdate dengan nama ' . $countryName
+                'message' => 'Harga barang dengan kode ' . $currentId . ' telah diperbarui dengan nominal ' . $harga_barang
             ]
         ));
-
+    
         return $response->withHeader("Content-Type", "application/json");
     });
 
     // delete data
-    $app->delete('/countries/{id}', function (Request $request, Response $response, $args) {
+    $app->delete('/barang/{id}', function (Request $request, Response $response, $args) {
         $currentId = $args['id'];
         $db = $this->get(PDO::class);
 
